@@ -478,7 +478,7 @@ namespace NzbDrone.Core.Indexers
             }
             catch (TooManyRequestsException ex)
             {
-                result.Queries.Add(new IndexerQueryResult { Response = ex.Response });
+                result.Queries.Add(new IndexerQueryResult(ex.Response));
 
                 var retryTime = ex.RetryAfter != TimeSpan.Zero ? ex.RetryAfter : minimumBackoff;
 
@@ -487,7 +487,7 @@ namespace NzbDrone.Core.Indexers
             }
             catch (HttpException ex)
             {
-                result.Queries.Add(new IndexerQueryResult { Response = ex.Response });
+                result.Queries.Add(new IndexerQueryResult(ex.Response));
                 _indexerStatusService.RecordFailure(Definition.Id);
 
                 if (ex.Response.HasHttpServerError)
@@ -501,7 +501,7 @@ namespace NzbDrone.Core.Indexers
             }
             catch (RequestLimitReachedException ex)
             {
-                result.Queries.Add(new IndexerQueryResult { Response = ex.Response.HttpResponse });
+                result.Queries.Add(new IndexerQueryResult(ex.Response.HttpResponse));
                 _indexerStatusService.RecordFailure(Definition.Id, minimumBackoff);
                 _logger.Warn(ex, "Request Limit reached for {0}. Disabled for {1}", this, minimumBackoff);
             }
@@ -512,14 +512,14 @@ namespace NzbDrone.Core.Indexers
             }
             catch (CloudFlareProtectionException ex)
             {
-                result.Queries.Add(new IndexerQueryResult { Response = ex.Response });
+                result.Queries.Add(new IndexerQueryResult(ex.Response));
                 _indexerStatusService.RecordFailure(Definition.Id);
                 ex.WithData("FeedUrl", url);
                 _logger.Error(ex, "Cloudflare protection detected for [{0}], Flaresolverr may be required.", this);
             }
             catch (IndexerException ex)
             {
-                result.Queries.Add(new IndexerQueryResult { Response = ex.Response.HttpResponse });
+                result.Queries.Add(new IndexerQueryResult(ex.Response.HttpResponse));
                 _indexerStatusService.RecordFailure(Definition.Id);
                 _logger.Warn(ex, "{0}", url);
             }
@@ -600,10 +600,9 @@ namespace NzbDrone.Core.Indexers
                     _logger.Trace("No releases found. Response: {0}", response.Content);
                 }
 
-                return new IndexerQueryResult
+                return new IndexerQueryResult(response.HttpResponse)
                 {
-                    Releases = releases,
-                    Response = response.HttpResponse
+                    Releases = releases
                 };
             }
             catch (Exception ex)

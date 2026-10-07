@@ -119,14 +119,14 @@ namespace NzbDrone.Core.History
 
         public void Handle(IndexerQueryEvent message)
         {
-            var response = message.QueryResult.Response;
+            var queryResult = message.QueryResult;
 
             var history = new History
             {
                 Date = DateTime.UtcNow,
                 IndexerId = message.IndexerId,
                 EventType = message.Query.IsRssSearch ? HistoryEventType.IndexerRss : HistoryEventType.IndexerQuery,
-                Successful = response?.StatusCode == HttpStatusCode.OK || (response is { Request: { SuppressHttpError: true, SuppressHttpErrorStatusCodes: not null } } && response.Request.SuppressHttpErrorStatusCodes.Contains(response.StatusCode))
+                Successful = queryResult.StatusCode == HttpStatusCode.OK || (queryResult is { StatusCode: not null, Request: { SuppressHttpError: true, SuppressHttpErrorStatusCodes: not null } } && queryResult.Request.SuppressHttpErrorStatusCodes.Contains(queryResult.StatusCode.Value))
             };
 
             if (message.Query is MovieSearchCriteria movieSearchCriteria)
@@ -177,15 +177,15 @@ namespace NzbDrone.Core.History
             // Clean empty data
             history.Data = history.Data.Where(d => d.Value != null).ToDictionary(x => x.Key, x => x.Value);
 
-            history.Data.Add("ElapsedTime", message.QueryResult.Cached ? "0" : message.QueryResult.Response?.ElapsedTime.ToString() ?? string.Empty);
+            history.Data.Add("ElapsedTime", queryResult.Cached ? "0" : queryResult.ElapsedTime?.ToString() ?? string.Empty);
             history.Data.Add("Query", message.Query.SearchTerm ?? string.Empty);
             history.Data.Add("QueryType", message.Query.SearchType ?? string.Empty);
             history.Data.Add("Categories", string.Join(",", message.Query.Categories ?? Array.Empty<int>()));
             history.Data.Add("Source", message.Query.Source ?? string.Empty);
             history.Data.Add("Host", message.Query.Host ?? string.Empty);
-            history.Data.Add("QueryResults", message.QueryResult.Releases?.Count.ToString() ?? string.Empty);
-            history.Data.Add("Url", message.QueryResult.Response?.Request.Url.FullUri ?? string.Empty);
-            history.Data.Add("Cached", message.QueryResult.Cached ? "1" : "0");
+            history.Data.Add("QueryResults", queryResult.Releases?.Count.ToString() ?? string.Empty);
+            history.Data.Add("Url", queryResult.Request?.Url.FullUri ?? string.Empty);
+            history.Data.Add("Cached", queryResult.Cached ? "1" : "0");
 
             _historyRepository.Insert(history);
         }
